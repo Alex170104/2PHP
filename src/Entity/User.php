@@ -21,8 +21,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 180)]
     private ?string $email = null;
 
-    #[ORM\Column(length: 100)]
-    private ?string $nom = null;
+    #[ORM\Column(type: 'string', length: 255)]
+    private $nom;
+
+    public function getNom(): ?string
+    {
+        return $this->nom;
+    }
+
+    public function setNom(string $nom): self
+    {
+        $this->nom = $nom;
+
+        return $this;
+    }
 
     /**
      * @var list<string> The user roles
