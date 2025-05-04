@@ -1,0 +1,83 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Hello {{ user.nom }}!{% endblock %}
+
+{% block body %}
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh; /* Prend toute la hauteur de la fenêtre */
+            display: flex; /* Permet de centrer le contenu */
+            flex-direction: column;
+            /*justify-content: center; !* Centre verticalement *!*/
+            align-items: center; /* Centre horizontalement */
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
+            color: #333;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #ff7e5f;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .example-wrapper {
+            margin: 2em auto;
+            max-width: 800px;
+            width: 90%;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        .example-wrapper ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .example-wrapper li {
+            background: #f5f5f5;
+            margin: 10px 0;
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, background 0.3s;
+        }
+
+        .example-wrapper li:hover {
+            background: #e0e0e0;
+        }
+
+        a {
+            color: #ff7e5f;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
+    <div class="example-wrapper">
+        <h1>Bienvenue sur la page utilisateur {{ user.nom }} !</h1>
+
+
+    </div>
+
+{% endblock %}

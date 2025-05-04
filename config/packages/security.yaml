@@ -13,6 +13,12 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+
+        api:
+            pattern: ^/Api
+            stateless: true
+            jwt: ~
+
         main:
             lazy: true
             provider: app_user_provider
@@ -39,8 +45,9 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+#        - { path: ^/admin-loader, roles: ROLE_ADMIN }   # Permet l'accès à la page de chargement
+#        - { path: ^/Api/admin, roles: PUBLIC_ACCESS }      # Le contrôle d'accès se fait dans le contrôleur
+#        - { path: ^/admin, roles: ROLE_ADMIN }
 
 when@test:
     security:
@@ -54,3 +61,5 @@ when@test:
                 cost: 4 # Lowest possible value for bcrypt
                 time_cost: 3 # Lowest possible value for argon
                 memory_cost: 10 # Lowest possible value for argon
+
+

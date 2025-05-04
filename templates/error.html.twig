@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erreur</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #ff4e50, #f9d423);
+            color: #fff;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin: 0.5em 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        p {
+            font-size: 1.2em;
+            margin: 0.5em 0;
+        }
+
+        a {
+            color: #fff;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: none;
+        }
+    </style>
+    <script>
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 3000); // Redirection après 3 secondes
+    </script>
+</head>
+<body>
+<h1>Erreur</h1>
+<p>{{ message }}</p>
+<p><a href="/">Retour à l'accueil</a></p>
+</body>
+</html>
