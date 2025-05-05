@@ -80,6 +80,9 @@
         <form action="{{ path('app_logout') }}" method="POST">
             <button type="submit" class="btn btn-danger">Déconnexion</button>
         </form>
+        <form action="{{ path('app_delete_account', {'id': user.id}) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.');">
+            <button type="submit" class="btn btn-danger">Supprimer le compte</button>
+        </form>
 
 
     </div>

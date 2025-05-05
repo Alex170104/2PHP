@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 
 
 
@@ -137,15 +138,38 @@ class UserApiController extends AbstractController
         return $response;
     }
 
+    #[Route('/delete-account/{id}', name: 'app_delete_account', methods: ['POST'])]
+    public function deleteAccount(Request $request, EntityManagerInterface $entityManager, int $id): Response
+    {
+        // Récupérer l'utilisateur via son ID
+        $user = $entityManager->getRepository(User::class)->find($id);
+        $role = $user->getRoles();
+        $response = $this->redirectToRoute('home');
+        if (!$user) {
+            // Si l'utilisateur n'existe pas, renvoyer une erreur
+            throw $this->createNotFoundException('Utilisateur non trouvé.');
+        }
+        if (in_array('ROLE_ADMIN', $role)) {
+            return $this->redirectToRoute('user_loader_id', ['id' => $id]);
+        }
 
+        // Supprimer l'utilisateur de la base de données
+        $entityManager->remove($user);
+        $entityManager->flush();
 
+         // Redirige vers la page d'accueil après suppression
 
+        return $response;
 
+        // Retourner la réponse pour la déconnexion et rediriger
 
+    }
 
-
-
-
+    #[Route('/', name: 'home')]
+    public function home(): Response
+    {
+        return $this->render('index.html.twig');
+    }
 
 
 }
