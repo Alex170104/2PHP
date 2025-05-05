@@ -1,71 +1,116 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Hello {{ user.nom }}!{% endblock %}
+{% block title %}Profil de {{ user.nom }}{% endblock %}
 
-{% block body %}
+{% block stylesheets %}
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1c1c1c, #2b2b2b);
+            color: #f0f0f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            height: 100vh; /* Prend toute la hauteur de la fenêtre */
-            display: flex; /* Permet de centrer le contenu */
-            flex-direction: column;
-            /*justify-content: center; !* Centre verticalement *!*/
-            align-items: center; /* Centre horizontalement */
-            background: linear-gradient(135deg, #ff7e5f, #feb47b);
-            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background-color: #2f2f2f;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            animation: fadeInUp 1s ease-out;
         }
 
         h1, h2 {
             text-align: center;
-            color: #ff7e5f;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            color: #f9d423;
+            text-shadow: 1px 1px 8px #000;
         }
 
-        .example-wrapper {
-            margin: 2em auto;
-            max-width: 800px;
-            width: 90%;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            animation: fadeIn 1s ease-in-out;
+        p.subtitle {
+            text-align: center;
+            color: #ccc;
+            font-style: italic;
+            margin-bottom: 2rem;
         }
 
-        .example-wrapper ul {
-            list-style: none;
-            padding: 0;
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
         }
 
-        .example-wrapper li {
-            background: #f5f5f5;
-            margin: 10px 0;
-            padding: 10px 15px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s, background 0.3s;
-        }
-
-        .example-wrapper li:hover {
-            background: #e0e0e0;
-        }
-
-        a {
-            color: #ff7e5f;
-            text-decoration: none;
+        label {
             font-weight: bold;
+            color: #ffb347;
         }
 
-        a:hover {
-            text-decoration: underline;
+        input {
+            padding: 0.7rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: #444;
+            color: #fff;
         }
 
-        @keyframes fadeIn {
+        input:focus {
+            outline: 2px solid #f9d423;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff4e50, #f9d423);
+            color: #1f1f1f;
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #f9d423, #ff4e50);
+            color: #1f1f1f;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e53935, #d32f2f);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b71c1c;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+        }
+
+        .account-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+
+        @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translateY(-20px);
+                transform: translateY(30px);
             }
             to {
                 opacity: 1;
@@ -73,18 +118,44 @@
             }
         }
     </style>
+{% endblock %}
 
-    <div class="example-wrapper">
-        <h1>Bienvenue sur la page utilisateur {{ user.nom }} !</h1>
-        <!-- Formulaire de déconnexion -->
-        <form action="{{ path('app_logout') }}" method="POST">
-            <button type="submit" class="btn btn-danger">Déconnexion</button>
+{% block body %}
+    <div class="container">
+        <h1>🎯 Profil de {{ user.nom }}</h1>
+        <p class="subtitle">Ici c'est ta safe zone, ce coin n'est que à toi.<br>(Et aux adminastreurs un petit peu trop curieux 👀)</p>
+
+        <div class="account-actions">
+            <!-- Formulaire de déconnexion -->
+            <form action="{{ path('app_logout') }}" method="POST">
+                <button type="submit" class="btn btn-primary">Déconnexion</button>
+            </form>
+
+            <!-- Formulaire de suppression -->
+            <form action="{{ path('app_delete_account', {'id': user.id}) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.');">
+                <button type="submit" class="btn btn-primary btn-secondary">Supprimer le compte</button>
+            </form>
+        </div>
+
+
+        <!-- Modification -->
+        <h2>🛠️ Modifier mes infos</h2>
+        <form action="{{ path('app_update_account', {'id': user.id}) }}" method="POST">
+            <label for="nom">Nom :</label>
+            <input type="text" name="nom" id="nom" value="{{ user.nom }}" required>
+
+            <label for="email">Email :</label>
+            <input type="email" name="email" id="email" value="{{ user.email }}" required>
+
+            <label for="new_password">Nouveau mot de passe :</label>
+            <input type="password" name="new_password" id="new_password" placeholder="Laisse vide si inchangé">
+
+            <label for="current_password">Mot de passe actuel <span style="color:#ccc;">(obligatoire seulement si changement de mot de passe)</span> :</label>
+            <input type="password" name="current_password" id="current_password">
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+            </div>
         </form>
-        <form action="{{ path('app_delete_account', {'id': user.id}) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.');">
-            <button type="submit" class="btn btn-danger">Supprimer le compte</button>
-        </form>
-
-
     </div>
-
 {% endblock %}

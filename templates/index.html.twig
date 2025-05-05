@@ -68,6 +68,32 @@
             transform: translateY(-4px);
             box-shadow: 0 12px 18px rgba(0, 0, 0, 0.3);
         }
+
+        .hero-image {
+            text-align: center;
+            margin-top: 3rem;
+            animation: fadeIn 2s ease-out;
+        }
+
+        .hero-image img {
+            max-width: 75%;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 0 25px rgba(255, 200, 0, 0.3);
+            transition: transform 0.4s ease;
+            background: linear-gradient(135deg, #1c1c1c, #2b2b2b);
+            mix-blend-mode: lighten;
+        }
+
+        .hero-image img:hover {
+            transform: scale(1.02);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
     </style>
 {% endblock %}
 
@@ -78,5 +104,9 @@
             <a href="{{ path('app_login') }}" class="btn btn-primary">Se connecter</a>
             <a href="{{ path('app_register') }}" class="btn btn-secondary">S'inscrire</a>
         </div>
+        <div class="hero-image">
+            <img src="{{ asset('assets/versus_sportif.png') }}" alt="Combat VS" />
+        </div>
+
     </div>
 {% endblock %}

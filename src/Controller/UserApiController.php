@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 
 
@@ -170,6 +171,76 @@ class UserApiController extends AbstractController
     {
         return $this->render('index.html.twig');
     }
+
+    #[Route('/update-account/{id}', name: 'app_update_account', methods: ['POST'])]
+    public function updateAccount(
+        Request $request,
+        UserPasswordHasherInterface $passwordHasher,
+        EntityManagerInterface $entityManager,
+        int $id
+    ): Response {
+        // Récupère l'utilisateur à modifier
+        $user = $entityManager->getRepository(User::class)->find($id);
+
+        if (!$user) {
+            throw $this->createNotFoundException('Utilisateur non trouvé.');
+        }
+
+        // Récupère les données du formulaire
+        $nom = $request->request->get('nom');
+        $email = $request->request->get('email');
+        $newPassword = $request->request->get('new_password');
+        $currentPassword = $request->request->get('current_password');
+
+        // Met à jour les infos de base
+        $user->setNom($nom);
+        $user->setEmail($email);
+
+        // Si un nouveau mot de passe est renseigné
+        if (!empty($newPassword)) {
+            // Vérifie que l'ancien mot de passe est correct
+            if (!$passwordHasher->isPasswordValid($user, $currentPassword)) {
+                return new Response("Mot de passe actuel incorrect.", Response::HTTP_FORBIDDEN);
+            }
+
+            // Met à jour le mot de passe
+            $hashedPassword = $passwordHasher->hashPassword($user, $newPassword);
+            $user->setPassword($hashedPassword);
+        }
+
+        $entityManager->flush();
+
+        return $this->redirectToRoute('user_loader_id', ['id' => $id]);
+    }
+
+
+    #[Route('/user', name: 'user-loader')]
+    public function loadUserPage(Request $request, JWTTokenManagerInterface $jwtManager, UserRepository $userRepository): Response
+    {
+        $token = $request->cookies->get('BEARER');
+
+        if (!$token) {
+            return $this->redirect('/login');
+        }
+
+        try {
+            $decoded = $jwtManager->parse($token);
+            $user = $userRepository->findOneBy(['email' => $decoded['username']]);
+
+            if (!$user) {
+                throw $this->createNotFoundException('Utilisateur introuvable.');
+            }
+
+            return $this->render('user_api/indexUser.html.twig', [
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            return new Response('Token invalide', 403);
+        }
+    }
+
+
+
 
 
 }
