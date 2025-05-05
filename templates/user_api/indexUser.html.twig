@@ -76,7 +76,11 @@
 
     <div class="example-wrapper">
         <h1>Bienvenue sur la page utilisateur {{ user.nom }} !</h1>
-{#        <a href="{{ path('logout') }}" class="btn btn-danger">Déconnexion</a>#}
+        <!-- Formulaire de déconnexion -->
+        <form action="{{ path('app_logout') }}" method="POST">
+            <button type="submit" class="btn btn-danger">Déconnexion</button>
+        </form>
+
 
     </div>
 

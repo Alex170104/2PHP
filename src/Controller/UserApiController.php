@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Repository\UserRepository;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -107,6 +108,43 @@ class UserApiController extends AbstractController
             return new Response('Token invalide', 403);
         }
     }
+
+    #[Route('/logout', name: 'app_logout', methods: ['POST'])]
+    public function logout(Request $request): Response
+    {
+        // Suppression du cookie 'BEARER' contenant le token
+        $response = new Response();
+
+        // Supprime le cookie BEARER
+        $response->headers->setCookie(
+            new Cookie(
+                'BEARER',          // Nom du cookie
+                '',                // Valeur vide
+                time() - 3600,     // Expiration passée pour supprimer le cookie
+                '/',               // Chemin
+                null,              // Domaine
+                false,             // Sécurisé (false en local, true en prod)
+                true,              // HttpOnly (pour sécuriser le cookie)
+                false,             // Raw (false si tu veux que le cookie soit encodé)
+                Cookie::SAMESITE_LAX // Valeur de SameSite pour la sécurité
+            )
+        );
+
+        // Redirige l'utilisateur vers la page d'accueil (http://localhost:8000/)
+        $response->headers->set('Location', '/');  // Forcer la redirection vers la page d'accueil
+        $response->setStatusCode(Response::HTTP_FOUND); // Utilise le code 302 pour la redirection
+
+        return $response;
+    }
+
+
+
+
+
+
+
+
+
 
 
 
