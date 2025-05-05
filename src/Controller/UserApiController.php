@@ -8,6 +8,9 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Entity\User;
+
+
 
 class UserApiController extends AbstractController
 {
@@ -17,7 +20,7 @@ class UserApiController extends AbstractController
         $token = $request->cookies->get('BEARER');
 
         if (!$token) {
-            return $this->redirect('/login'); // ou une 403
+            return $this->redirect('/login');
         }
 
         try {
@@ -28,13 +31,52 @@ class UserApiController extends AbstractController
                 return new Response('Accès refusé', 403);
             }
 
-            return $this->render('user_api/indexUser.html.twig', [
-                'user' => $user
-            ]);
+            // ✅ Redirection vers /user-loader/{id}
+            return $this->redirectToRoute('user_loader_id', ['id' => $user->getId()]);
         } catch (\Exception $e) {
             return new Response('Token invalide', 403);
         }
     }
+
+    #[Route('/user-loader/{id}', name: 'user_loader_id')]
+    public function userLoaderWithId(
+        int $id,
+        Request $request,
+        JWTTokenManagerInterface $jwtManager,
+        UserRepository $userRepository
+    ): Response {
+        $token = $request->cookies->get('BEARER');
+
+        if (!$token) {
+            return $this->redirect('/login');
+        }
+
+        try {
+            $decoded = $jwtManager->parse($token);
+            $userFromToken = $userRepository->findOneBy(['email' => $decoded['username']]);
+            $targetUser = $userRepository->find($id);
+
+            if (!$userFromToken || !$targetUser) {
+                return $this->render('error.html.twig', ['message' => 'Utilisateur introuvable']);
+            }
+
+            // Si l'utilisateur authentifié n'est pas admin et essaie de voir un autre utilisateur
+            if (
+                $userFromToken->getId() !== $targetUser->getId() &&
+                !in_array('ROLE_ADMIN', $userFromToken->getRoles())
+            ) {
+                return $this->render('error.html.twig', ['message' => 'Accès refusé']);
+            }
+
+            return $this->render('user_api/indexUser.html.twig', [
+                'user' => $targetUser
+            ]);
+        } catch (\Exception $e) {
+            return $this->render('error.html.twig', ['message' => 'Token invalide']);
+        }
+    }
+
+
 
 
 
@@ -65,6 +107,9 @@ class UserApiController extends AbstractController
             return new Response('Token invalide', 403);
         }
     }
+
+
+
 }
 
 
