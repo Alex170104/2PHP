@@ -41,7 +41,7 @@ class UserApiController extends AbstractController
         }
     }
 
-    #[Route('/user-loader/{id}', name: 'user_loader_id')]
+    #[Route('/user/{id}', name: 'user_loader_id')]
     public function userLoaderWithId(
         int $id,
         Request $request,
