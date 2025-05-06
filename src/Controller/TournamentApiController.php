@@ -9,6 +9,11 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Repository\TournamentRepository;
+use App\Repository\PlayerRepository;
+use App\Entity\Player;
+use App\Entity\Registration;
+use App\Repository\UserRepository;
 
 class TournamentApiController extends AbstractController
 {
@@ -156,4 +161,157 @@ class TournamentApiController extends AbstractController
             return null;
         }
     }
+
+    #[Route('/api/tournaments/{id}/registrations', name: 'api_register_player', methods: ['POST'])]
+    public function registerPlayer(
+        int $id,
+        Request $request,
+        TournamentRepository $tournamentRepository,
+        UserRepository $userRepository,
+        PlayerRepository $playerRepository,
+        EntityManagerInterface $em
+    ): JsonResponse {
+        $tournament = $tournamentRepository->find($id);
+
+        if (!$tournament) {
+            return $this->json(['error' => 'Tournoi introuvable.'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+
+        if (
+            !isset($data['user_id']) ||
+            !isset($data['pseudo']) ||
+            !isset($data['age'])
+        ) {
+            return $this->json(['error' => 'Pseudo, âge et user_id sont requis.'], 400);
+        }
+
+        $user = $userRepository->find($data['user_id']);
+
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur introuvable.'], 404);
+        }
+
+        $existingPlayer = $playerRepository->findOneBy(['user' => $user]);
+
+        if ($existingPlayer) {
+            $player = $existingPlayer;
+        } else {
+            $player = new Player();
+            $player->setUser($user);
+            $player->setPseudo($data['pseudo']);
+            $player->setAge($data['age']);
+            $em->persist($player);
+        }
+
+        // Vérifier si le joueur est déjà inscrit à ce tournoi
+        $existingRegistration = $em->getRepository(Registration::class)->findOneBy([
+            'player' => $player,
+            'tournament' => $tournament
+        ]);
+
+        if ($existingRegistration) {
+            return $this->json([
+                'error' => 'Ce joueur est déjà inscrit à ce tournoi.'
+            ], 409);
+        }
+
+
+        $registration = new Registration();
+        $registration->setPlayer($player);
+        $registration->setTournament($tournament);
+        $registration->setStatut('en attente');
+
+        $em->persist($registration);
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Inscription enregistrée avec succès.',
+            'registration_id' => $registration->getId()
+        ], 201);
+    }
+    #[Route('/api/tournaments/{id}/registrations', name: 'api_get_registrations', methods: ['GET'])]
+    public function getRegistrations(
+        int $id,
+        TournamentRepository $tournamentRepository,
+        EntityManagerInterface $em
+    ): JsonResponse {
+        // Récupérer le tournoi à partir de l'ID
+        $tournament = $tournamentRepository->find($id);
+
+        // Vérifier si le tournoi existe
+        if (!$tournament) {
+            return $this->json(['error' => 'Tournoi introuvable.'], 404);
+        }
+
+        // Récupérer toutes les inscriptions pour ce tournoi
+        $registrations = $em->getRepository(Registration::class)->findBy(['tournament' => $tournament]);
+
+        // Si aucune inscription n'est trouvée
+        if (empty($registrations)) {
+            return $this->json(['message' => 'Aucune inscription trouvée pour ce tournoi.'], 404);
+        }
+
+        // Préparer les données des inscriptions
+        $registrationData = [];
+        foreach ($registrations as $registration) {
+            $registrationData[] = [
+                'id' => $registration->getId(),
+                'player_id' => $registration->getPlayer()->getId(),
+                'pseudo' => $registration->getPlayer()->getPseudo(),
+                'age' => $registration->getPlayer()->getAge(),
+                'status' => $registration->getStatut(),
+            ];
+        }
+
+        // Retourner la réponse JSON avec les données des inscriptions
+        return $this->json([
+            'message' => 'Inscriptions récupérées avec succès.',
+            'registrations' => $registrationData
+        ], 200);
+    }
+
+    #[Route('/api/tournaments/{idTournament}/registrations/{idRegistration}', name: 'api_delete_registration', methods: ['DELETE'])]    public function deleteRegistration(
+        int $idTournament,
+        int $idRegistration,
+        TournamentRepository $tournamentRepository,
+        EntityManagerInterface $em
+    ): JsonResponse {
+        // Récupérer le tournoi avec l'ID
+        $tournament = $tournamentRepository->find($idTournament);
+
+        // Vérifier si le tournoi existe
+        if (!$tournament) {
+            return $this->json(['error' => 'Tournoi introuvable.'], 404);
+        }
+
+        // Récupérer l'inscription avec l'ID
+        $registration = $em->getRepository(Registration::class)->find($idRegistration);
+
+        // Vérifier si l'inscription existe et appartient bien à ce tournoi
+        if (!$registration) {
+            return $this->json(['error' => 'Inscription introuvable.'], 404);
+        }
+
+        if ($registration->getTournament() !== $tournament) {
+            return $this->json(['error' => 'L\'inscription ne correspond pas à ce tournoi.'], 400);
+        }
+
+        try {
+            // Supprimer l'inscription
+            $em->remove($registration);
+            $em->flush();
+
+            // Réponse JSON en cas de succès
+            return $this->json(['message' => 'Inscription annulée avec succès.'], 200);
+        } catch (\Exception $e) {
+            // Gestion des erreurs
+            return $this->json(['error' => 'Une erreur est survenue lors de la suppression de l\'inscription.'], 500);
+        }
+    }
+
+
+
+
 }
