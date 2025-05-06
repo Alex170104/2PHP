@@ -116,9 +116,9 @@
                 localStorage.setItem('jwt', data.token);
 
                 if (data.role === 'ROLE_ADMIN') {
-                    window.location.href = '/admin-loader';
+                    window.location.href = '/admin';
                 } else if (data.role === 'ROLE_USER') {
-                    window.location.href = '/user-loader';
+                    window.location.href = '/user';
                 } else {
                     alert('Rôle non reconnu.');
                 }

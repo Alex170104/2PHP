@@ -17,6 +17,14 @@
         color: #333;
     }
 
+    .container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px; /* Espace entre les blocs */
+        margin: 20px;
+    }
+
     h1, h2 {
         text-align: center;
         color: #3a96ff;
@@ -24,6 +32,7 @@
     }
 
     .example-wrapper {
+        flex: 2;
         margin: 2em auto;
         max-width: 800px;
         width: 90%;
@@ -55,7 +64,6 @@
     a {
         color: #3a96ff;
         text-decoration: none;
-        font-weight: bold;
     }
 
     a:hover {
@@ -72,21 +80,209 @@
             transform: translateY(0);
         }
     }
+
+    .container-wrapper{
+        flex: 1; /* Prend tout l'espace restant */
+        display: flex;
+        flex-direction: column; /* Aligne les éléments verticalement */
+        width: 100%; /* Prend toute la largeur disponible */
+    }
+
+    .list-wrapper {
+        margin: 2em auto;
+        padding: 1rem;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        width : 100%; /* Prend toute la largeur disponible */
+        max-height: 15rem;
+        animation: fadeIn 1s ease-in-out;
+        display: flex;
+        flex-direction: column; /* Centre les éléments horizontalement */
+        align-items: center;
+    }
+
+    #list{
+        overflow-y: auto; /* Active le défilement vertical si nécessaire */
+        max-height: 15rem; /* Limite la hauteur maximale de la liste */
+        padding-right: 10px; /* Décale la barre de défilement */
+        box-sizing: content-box;
+    }
+
+    #list ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        width: 100%; /* Prend toute la largeur disponible */
+    }
+    .card {
+        background: #ffffff;
+        padding: 15px 10px;
+        margin: 10px 0;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .info {
+        font-size: 16px;
+    }
+
+    .info strong {
+        color: #3a96ff;
+    }
 </style>
 
-<div class="example-wrapper">
-    <h1>Bienvenue sur la page d'administration {{ user.nom }} !</h1>
-    <p>Cette page est réservée aux administrateurs.</p>
+    <div class="container">
+        <div class="example-wrapper">
+            <h1>Bienvenue sur la page d'administration {{ user.nom }} !</h1>
+            <p>Cette page est réservée aux administrateurs.</p>
 
-    <h2>Fonctionnalités de l'API</h2>
-    <ul>
-        <li>Gestion des utilisateurs</li>
-        <li>Gestion des rôles</li>
-        <li>Gestion des permissions</li>
-        <li>Gestion des produits</li>
-        <li>Gestion des commandes</li>
-    </ul>
+            <h2>Fonctionnalités de l'API</h2>
+            <ul>
+                <li>Gestion des utilisateurs</li>
+                <li>Gestion des rôles</li>
+                <li>Gestion des permissions</li>
+                <li>Gestion des produits</li>
+                <li>Gestion des commandes</li>
+            </ul>
+        </div>
 
-</div>
+        <div class="container-wrapper">
+            <div class="list-wrapper">
+                <h2>Liste des utilisateurs</h2>
+                <div id="list">
+                    {% if users is defined and users|length > 0 %}
+                        <ul>
+                            {% for user in users %}
+                                <a href="/modif-user/{{ user.id }}" style="text-decoration: none; color: inherit;">
+                                    <li class="card">
+                                        <div class="info">
+                                            <strong>Email:</strong> {{ user.email }}
+                                        </div>
+                                    </li>
+                                </a>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <li>Aucun utilisateur trouvé.</li>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="list-wrapper">
+                <h2>Liste des tournois</h2>
+                <div id="list">
+                    {% if tournaments is defined and tournaments|length > 0 %}
+                        <ul>
+                            {% for tournament in tournaments %}
+                                <a href="/tournament/{{ tournament.id }}" style="text-decoration: none; color: inherit;">
+                                    <li class="card">
+                                        <div class="info">
+                                            <strong>Nom:</strong> {{ tournament.nom }}<br>
+                                            <strong>Lieu:</strong> {{ tournament.lieu }}<br>
+                                            <strong>Date:</strong> {{ tournament.dateDebut|date('d/m/Y') }}<br>
+                                        </div>
+                                    </li>
+                                </a>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <li>Aucun tournoi trouvé.</li>
+                    {% endif %}
+                </div>
+                <button id="openFormButton"> + </button>
+            </div>
+
+            <div id="formModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5);">
+                <div style="background: white; margin: 50px auto; padding: 20px; width: 50%; border-radius: 8px;">
+                    <h2>Créer un tournoi</h2>
+                    <form id="createTournamentForm" action="/Api/tournaments" method="POST">
+                        <label for="name">Nom :</label>
+                        <input type="text" id="name" name="name" required>
+
+                        <label for="startDate">Date de début :</label>
+                        <input type="date" id="startDate" name="startDate" required>
+
+                        <label for="endDate">Date de fin :</label>
+                        <input type="date" id="endDate" name="endDate" required>
+
+                        <label for="description">Description :</label>
+                        <textarea id="description" name="description" required></textarea>
+
+                        <label for="sport">Sport :</label>
+                        <input type="text" id="sport" name="sport">
+
+                        <label for="lieu">Lieu :</label>
+                        <input type="text" id="lieu" name="lieu">
+
+                        <button type="submit">Créer</button>
+                        <button type="button" id="closeFormButton">Annuler</button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('openFormButton').addEventListener('click', () => {
+            document.getElementById('formModal').style.display = 'block';
+        });
+
+        document.getElementById('closeFormButton').addEventListener('click', () => {
+            document.getElementById('formModal').style.display = 'none';
+        });
+
+        // Soumission du formulaire
+        document.getElementById('createTournamentForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(event.target);
+            const data = {
+                name: formData.get('name'),
+                startDate: formData.get('startDate'),
+                endDate: formData.get('endDate'),
+                description: formData.get('description'),
+                sport: formData.get('sport'),
+                lieu: formData.get('lieu')
+            };
+
+            try {
+                const response = await fetch('/Api/tournaments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message);
+
+                    event.target.reset();
+
+                    document.getElementById('formModal').style.display = 'none';
+
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert(error.error);
+                }
+            } catch (err) {
+                console.error('Erreur lors de la création du tournoi :', err);
+                alert('Une erreur est survenue.');
+            }
+        });
+    </script>
 
 {% endblock %}

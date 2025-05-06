@@ -2,17 +2,20 @@
 
 namespace App\Controller;
 
+use App\Repository\TournamentRepository;
 use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 class AdminApiController extends AbstractController
 {
-    #[Route('/admin-loader', name: 'admin_loader')]
-    public function adminLoader(Request $request, JWTTokenManagerInterface $jwtManager, UserRepository $userRepository): Response
+    #[Route('/admin', name: 'admin_loader')]
+    public function adminLoader(Request $request, JWTTokenManagerInterface $jwtManager, UserRepository $userRepository, TournamentRepository $tournamentRepository): Response
     {
         $token = $request->cookies->get('BEARER');
 
@@ -26,41 +29,15 @@ class AdminApiController extends AbstractController
 
             if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
                 return $this->render('error.html.twig', ['message' => 'Accès refusé']);
-//                return new Response('Accès refusé', 403);
             }
 
-            return $this->render('admin_api/indexAdmin.html.twig', [
-                'user' => $user
-            ]);
-        } catch (\Exception $e) {
-            return new Response('Token invalide', 403);
-        }
-    }
-
-
-
-
-    #[Route('/Api/admin', name: 'admin_secure')]
-    public function secureAdmin(Request $request, JWTTokenManagerInterface $jwtManager, UserRepository $userRepository): Response
-    {
-        $authHeader = $request->headers->get('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return new Response('Token manquant', 403);
-        }
-
-        $token = str_replace('Bearer ', '', $authHeader);
-
-        try {
-            $decoded = $jwtManager->parse($token);
-            $email = $decoded['username'];
-            $user = $userRepository->findOneBy(['email' => $email]);
-
-            if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
-                return new Response('Non autorisé', 403);
-            }
+            $users = $userRepository->findAll();
+            $tournaments = $tournamentRepository->findAll();
 
             return $this->render('admin_api/indexAdmin.html.twig', [
-                'user' => $user
+                'user' => $user,
+                'users' => $users,
+                'tournaments' => $tournaments,
             ]);
         } catch (\Exception $e) {
             return new Response('Token invalide', 403);
