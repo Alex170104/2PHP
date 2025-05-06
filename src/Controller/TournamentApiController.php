@@ -202,6 +202,7 @@ class TournamentApiController extends AbstractController
             $player->setUser($user);
             $player->setPseudo($data['pseudo']);
             $player->setAge($data['age']);
+            $player->setSport($tournament->getSport());
             $em->persist($player);
         }
 
@@ -258,10 +259,22 @@ class TournamentApiController extends AbstractController
         foreach ($registrations as $registration) {
             $registrationData[] = [
                 'id' => $registration->getId(),
-                'player_id' => $registration->getPlayer()->getId(),
-                'pseudo' => $registration->getPlayer()->getPseudo(),
-                'age' => $registration->getPlayer()->getAge(),
-                'status' => $registration->getStatut(),
+                'player_id' => [
+                    'player_id'=>$registration->getPlayer()->getId(),
+                    'user_id' => $registration->getPlayer()->getUser()->getId(),
+                    'pseudo' => $registration->getPlayer()->getPseudo(),
+                    'age' => $registration->getPlayer()->getAge(),
+                    'status' => $registration->getStatut(),
+                    'sport' => $registration->getPlayer()->getSport(),
+                    ],
+                'tournament' => [
+                    'id' => $registration->getTournament()->getId(),
+                    'name' => $registration->getTournament()->getNom(),
+                    'startDate' => $registration->getTournament()->getDateDebut()->format('Y-m-d'),
+                    'endDate' => $registration->getTournament()->getDateFin()->format('Y-m-d'),
+                    'location' => $registration->getTournament()->getLieu(),
+                    'sport' => $registration->getTournament()->getSport(),
+                ]
             ];
         }
 
