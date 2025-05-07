@@ -10,6 +10,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Authentication\Token\PreAuthenticatedToken;
 
 class LoginController extends AbstractController
 {
@@ -20,7 +22,8 @@ class LoginController extends AbstractController
     public function __construct(
         JWTTokenManagerInterface $jwtManager,
         UserPasswordHasherInterface $passwordHasher,
-        UserProviderInterface $userProvider
+        UserProviderInterface $userProvider,
+        private TokenStorageInterface $tokenStorage
     ) {
         $this->jwtManager = $jwtManager;
         $this->passwordHasher = $passwordHasher;
@@ -42,6 +45,9 @@ class LoginController extends AbstractController
 
         // Générer un token JWT
         $token = $this->jwtManager->create($user);
+
+        $preAuthenticatedToken = new PreAuthenticatedToken($user, $token, $user->getRoles());
+        $this->tokenStorage->setToken($preAuthenticatedToken);
 
         $response = new JsonResponse([
             'status' => 'ok',

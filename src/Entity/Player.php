@@ -10,6 +10,23 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: PlayerRepository::class)]
 class Player
 {
+    /**
+     * @ORM\ManyToOne(targetEntity="App\Entity\Tournament", inversedBy="players")
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private $tournament;
+
+    public function getTournament(): ?Tournament
+    {
+        return $this->tournament;
+    }
+
+    public function setTournament(?Tournament $tournament): self
+    {
+        $this->tournament = $tournament;
+
+        return $this;
+    }
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

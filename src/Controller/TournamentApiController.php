@@ -2,21 +2,40 @@
 
 namespace App\Controller;
 
+use App\Entity\Player;
 use App\Entity\Tournament;
+use App\Entity\User;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 class TournamentApiController extends AbstractController
 {
+    private $jwtManager;
+    private $userRepository;
+
+    public function __construct(
+        JWTTokenManagerInterface $jwtManager,
+        UserPasswordHasherInterface $passwordHasher,
+        UserRepository $userRepository
+    ) {
+        $this->jwtManager = $jwtManager;
+        $this->userRepository = $userRepository;
+    }
+
     #[Route('/tournament/{id}', name: 'tournament_show', methods: ['GET'])]
-    public function showTournament(Tournament $tournament, Request $request, EntityManagerInterface $entityManager): Response
+    public function showTournament(Tournament $tournament, EntityManagerInterface $entityManager, Request $request): Response
     {
-        return $this->render('tournament/show.html.twig', [
+        $players = null;
+        return $this->render('tournament/indexTournament.html.twig', [
             'tournament' => $tournament,
+            'players' => $players,
         ]);
     }
 
@@ -68,7 +87,7 @@ class TournamentApiController extends AbstractController
         }
     }
 
-    #[Route('/api/tournaments/{id}', name: 'api_delete_tournament', methods: ['DELETE'])]
+    #[Route('/Api/tournaments/{id}', name: 'api_delete_tournament', methods: ['DELETE'])]
     public function deleteTournament(Tournament $tournament, EntityManagerInterface $entityManager): JsonResponse
     {
         try {
@@ -91,12 +110,14 @@ class TournamentApiController extends AbstractController
     }
 
     #[Route('/Api/tournaments', name: 'api_create_tournament', methods: ['POST'])]
-    public function createTournament(Request $request, EntityManagerInterface $entityManager): JsonResponse
-    {
-        // Décoder le JSON reçu dans le corps de la requête
+    public function createTournament(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        JWTTokenManagerInterface $jwtManager,
+        UserRepository $userRepo
+    ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
-        // Vérification des champs obligatoires
         $name = $data['name'] ?? null;
         $startDate = $data['startDate'] ?? null;
         $endDate = $data['endDate'] ?? null;
@@ -112,7 +133,25 @@ class TournamentApiController extends AbstractController
         }
 
         try {
-            // Création de l'entité Tournament
+            // 🔐 Récupérer le token depuis le cookie et décoder
+            $token = $request->cookies->get('BEARER');
+            if (!$token) {
+                return new JsonResponse(['error' => 'Token JWT manquant.'], Response::HTTP_UNAUTHORIZED);
+            }
+
+            $payload = $jwtManager->parse($token); // ça décode le token JWT
+
+            if (!$payload || !isset($payload['username'])) {
+                return new JsonResponse(['error' => 'Token JWT invalide.'], Response::HTTP_UNAUTHORIZED);
+            }
+
+            // 📥 Récupérer l'utilisateur via l'email contenu dans le token
+            $user = $userRepo->findOneBy(['email' => $payload['username']]);
+            if (!$user) {
+                return new JsonResponse(['error' => 'Utilisateur introuvable.'], Response::HTTP_UNAUTHORIZED);
+            }
+
+            // 🏗️ Création du tournoi
             $tournament = new Tournament();
             $tournament->setNom($name);
             $tournament->setDateDebut(new \DateTimeImmutable($startDate));
@@ -120,40 +159,21 @@ class TournamentApiController extends AbstractController
             $tournament->setRegles($description);
             $tournament->setSport($sport);
             $tournament->setLieu($location);
+            $tournament->setOrganisateur($user);
 
-            // Associer l'utilisateur connecté comme organisateur
-            $tournament->setOrganisateur($this->getAuthenticatedUser($request));
-
-            // Sauvegarde dans la base de données
             $entityManager->persist($tournament);
             $entityManager->flush();
 
-            // Réponse JSON en cas de succès
             return new JsonResponse(['message' => 'Tournoi créé avec succès'], Response::HTTP_CREATED);
 
         } catch (\Exception $e) {
-            // Gestion des erreurs
             return new JsonResponse(
-                ['error' => 'Une erreur est survenue lors de la création du tournoi.'],
+                ['error' => 'Une erreur est survenue lors de la création du tournoi.', 'details' => $e->getMessage()],
                 Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
     }
 
-    private function getAuthenticatedUser(Request $request): ?User
-    {
-        $token = $request->headers->get('Authorization');
-        if (!$token || !str_starts_with($token, 'Bearer ')) {
-            return null;
-        }
 
-        $jwt = substr($token, 7); // Supprime "Bearer "
-        try {
-            $decoded = $this->jwtManager->parse($jwt);
-            $user = $this->userRepository->findOneBy(['email' => $decoded['username']]);
-            return $user ? $user->getId() : null;
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
+
 }

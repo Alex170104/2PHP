@@ -4,95 +4,28 @@
 
 {% block stylesheets %}
     <style>
-        body {
-            background-color: #1f1f1f;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
 
-        .hero-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            height: 100vh;
-            background: radial-gradient(circle at center, #2c2c2c 0%, #111 100%);
-        }
-
-        .hero-container h1 {
-            font-size: 3rem;
-            margin-bottom: 2rem;
-            color: #e63946;
-            text-shadow: 2px 2px 8px #000;
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            background: #2c2c2c;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        label {
-            font-size: 1.2rem;
-            color: #fff;
-        }
-
-        input {
-            padding: 0.8rem;
-            font-size: 1rem;
-            border: none;
-            border-radius: 5px;
-            background: #1f1f1f;
-            color: #fff;
-        }
-
-        button {
-            padding: 0.8rem 2.4rem;
-            font-size: 1.3rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 50px;
-            transition: transform 0.2s ease, background-color 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            background: linear-gradient(135deg, #ff4e50, #f9d423);
-            color: #2c3e50;
-        }
-
-        button:hover {
-            background-color: #f1b500;
-            transform: translateY(-4px);
-            box-shadow: 0 12px 18px rgba(0, 0, 0, 0.3);
-        }
-
-        #message1, #message2 {
-            color: #e63946;
-            font-size: 1.2rem;
-        }
     </style>
 {% endblock %}
 
 {% block body %}
-    <div class="hero-container">
-        <h1>Connexion</h1>
+    <div class="form-container">
+        <div class="container">
+            <h1>🔐 Connexion</h1>
 
-        <form id="jwtLoginForm">
-            <label>Email :</label>
-            <input type="email" id="email" required>
-            <label>Mot de passe :</label>
-            <input type="password" id="password" required>
-            <button type="submit">Connexion</button>
-        </form>
+            <form id="jwtLoginForm">
+                <label>Email :</label>
+                <input type="email" id="email" required>
 
-        <p id="message1"></p>
-        <p id="message2"></p>
+                <label>Mot de passe :</label>
+                <input type="password" id="password" required>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Connexion</button>
+                </div>
+            </form>
+            <p id="message1"></p>
+        </div>
     </div>
 
     <script>
@@ -122,7 +55,6 @@
                 } else {
                     alert('Rôle non reconnu.');
                 }
-
             } else {
                 message1.innerText = 'Identifiants invalides';
             }

@@ -1,0 +1,139 @@
+{# ==========================
+   Vue d'un tournoi individuel
+   ========================== #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Tournoi - {{ tournament.nom }}{% endblock %}
+
+{% block body %}
+    <div class="tournament-container">
+        <div class="tournament-wrapper">
+            <h1>🎯 Tournoi : {{ tournament.nom }}</h1>
+
+
+            <div class="section">
+                <ul class="tournament-info">
+                    <li><strong>📍 Lieu :</strong> {{ tournament.lieu }}</li>
+                    <li><strong>📅 Début :</strong> {{ tournament.dateDebut|date('d/m/Y') }}</li>
+                    <li><strong>📅 Fin :</strong> {{ tournament.dateFin|date('d/m/Y') }}</li>
+                    <li><strong>📝 Règles :</strong> {{ tournament.regles }}</li>
+                    <li><strong>🏅 Sport :</strong> {{ tournament.sport }}</li>
+                </ul>
+            </div>
+
+            <div class="tournament-actions">
+                <button id="openModal" class="btn btn-primary btn-noForm">✏️ Modifier</button>
+                <form id="deleteTournamentForm" method="POST" action="{{ path('api_delete_tournament', { id: tournament.id }) }}">
+                    <button type="submit" class="btn btn-danger">🗑 Supprimer</button>
+                </form>
+            </div>
+
+            <div class="section">
+                <h2>👥 Participants</h2>
+                {% if players is not empty %}
+                    <div class="players-list">
+                        {% for player in players %}
+                            <div class="player-card">
+                                <div class="player-name">{{ player.nom }}</div>
+                                <div class="player-email">{{ player.email }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-players">Aucun joueur inscrit pour le moment.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# ========== Modal ========== #}
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span id="closeModal" class="close">&times;</span>
+            <h2>Modifier le tournoi</h2>
+            <form id="updateTournamentForm" method="POST" action="{{ path('api_update_tournament', { id: tournament.id }) }}">
+                <label for="name">Nom :</label>
+                <input type="text" id="name" name="name" value="{{ tournament.nom }}" required>
+
+                <label for="lieu">Lieu :</label>
+                <input type="text" id="lieu" name="lieu" value="{{ tournament.lieu }}" required>
+
+                <label for="startDate">Date de début :</label>
+                <input type="date" id="startDate" name="startDate" value="{{ tournament.dateDebut|date('Y-m-d') }}" required>
+
+                <label for="endDate">Date de fin :</label>
+                <input type="date" id="endDate" name="endDate" value="{{ tournament.dateFin|date('Y-m-d') }}" required>
+
+                <label for="description">Description :</label>
+                <textarea id="description" name="description" required>{{ tournament.regles }}</textarea>
+
+                <label for="sport">Sport :</label>
+                <input type="text" id="sport" name="sport" value="{{ tournament.sport }}" required>
+
+                <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+
+    {# ========== Script JS pour le modal et les appels API ========== #}
+    <script>
+        const modal = document.getElementById('modal');
+
+        // Ouvre le modal
+        document.getElementById('openModal').addEventListener('click', () => {
+            modal.style.display = 'block';
+        });
+
+        // Ferme le modal
+        document.getElementById('closeModal').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // Ferme si on clique en dehors du contenu
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Update AJAX
+            document.getElementById('updateTournamentForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const formData = new FormData(form);
+                const jsonData = Object.fromEntries(formData.entries());
+
+                const response = await fetch(form.action, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(jsonData),
+                });
+
+                if (response.ok) {
+                    alert('Tournoi mis à jour avec succès.');
+                    location.reload();
+                } else {
+                    alert('Erreur lors de la mise à jour.');
+                }
+            });
+
+        // Delete AJAX
+        document.getElementById('deleteTournamentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce tournoi ?')) {
+                const response = await fetch(e.target.action, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                if (response.ok) {
+                    alert('Tournoi supprimé avec succès.');
+                    window.location.href = '/';
+                } else {
+                    alert('Erreur lors de la suppression du tournoi.');
+                }
+            }
+        });
+    </script>
+{% endblock %}
