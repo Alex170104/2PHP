@@ -566,6 +566,59 @@ class TournamentApiController extends AbstractController
     }
 
 
+    #[Route('/api/tournaments/{idTournament}/sport-matchs/{idSportMatchs}', name: 'api_delete_sport_match', methods: ['DELETE'])]
+    public function deleteSportMatch(
+        int $idTournament,
+        int $idSportMatchs,
+        Request $request,
+        TournamentRepository $tournamentRepository,
+        RencontreRepository $rencontreRepository,
+        EntityManagerInterface $em,
+        JWTTokenManagerInterface $jwtManager,
+        UserRepository $userRepository
+    ): JsonResponse {
+        // Récupérer le tournoi
+        $tournament = $tournamentRepository->find($idTournament);
+        if (!$tournament) {
+            return $this->json(['error' => 'Tournoi introuvable.'], 404);
+        }
+
+        // Récupérer la rencontre (match)
+        $match = $rencontreRepository->find($idSportMatchs);
+        if (!$match || $match->getTournament()->getId() !== $tournament->getId()) {
+            return $this->json(['error' => 'Match introuvable pour ce tournoi.'], 404);
+        }
+
+        // Authentification via cookie
+        $token = $request->cookies->get('BEARER');
+        if (!$token) {
+            return $this->json(['error' => 'Utilisateur non authentifié.'], 401);
+        }
+
+        $payload = $jwtManager->parse($token);
+        if (!$payload || !isset($payload['username'])) {
+            return $this->json(['error' => 'Token invalide.'], 401);
+        }
+
+        $user = $userRepository->findOneBy(['email' => $payload['username']]);
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non trouvé.'], 404);
+        }
+
+        // Vérification des droits : admin ou organisateur uniquement
+        $isAdminOrOwner = in_array('ROLE_ADMIN', $user->getRoles()) || $user === $tournament->getOrganisateur();
+        if (!$isAdminOrOwner) {
+            return $this->json(['error' => 'Accès refusé. Seul un administrateur ou l\'organisateur peut supprimer ce match.'], 403);
+        }
+
+        // Suppression de la rencontre
+        $em->remove($match);
+        $em->flush();
+
+        return $this->json(['message' => 'Match supprimé avec succès.'], 200);
+    }
+
+
 
 
 
