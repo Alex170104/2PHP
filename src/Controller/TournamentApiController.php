@@ -33,12 +33,57 @@ class TournamentApiController extends AbstractController
     }
 
     #[Route('/tournament/{id}', name: 'tournament_show', methods: ['GET'])]
-    public function showTournament(Tournament $tournament, EntityManagerInterface $entityManager, Request $request): Response
-    {
-        $players = null;
+    public function showTournament(
+        Tournament $tournament,
+        Request $request,
+        JWTTokenManagerInterface $jwtManager,
+        UserRepository $userRepository,
+        PlayerRepository $playerRepository,
+        EntityManagerInterface $entityManager
+    ): Response {
+        $players = $playerRepository->findAll();
+        $isAdminOrOwner = false;
+        $isPlayerInTournament = false;
+        $registration = null;
+
+        $registrations = $entityManager->getRepository(Registration::class)
+            ->createQueryBuilder('r')
+            ->where('r.tournament = :tournament')
+            ->setParameter('tournament', $tournament)
+            ->getQuery()
+            ->getResult();
+
+        $token = $request->cookies->get('BEARER');
+        if ($token) {
+            $payload = $jwtManager->parse($token);
+            if ($payload && isset($payload['username'])) {
+                $user = $userRepository->findOneBy(['email' => $payload['username']]);
+                if ($user) {
+                    $isAdminOrOwner = in_array('ROLE_ADMIN', $user->getRoles()) ||
+                        $user === $tournament->getOrganisateur();
+
+                    foreach ($players as $player) {
+                        if ($player->getUser() === $user) {
+                            $isPlayerInTournament = true;
+
+                            $registration = $entityManager->getRepository(Registration::class)->findOneBy([
+                                'player' => $player,
+                                'tournament' => $tournament
+                            ]);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         return $this->render('tournament/indexTournament.html.twig', [
             'tournament' => $tournament,
             'players' => $players,
+            'isAdminOrOwner' => $isAdminOrOwner,
+            'isPlayerInTournament' => $isPlayerInTournament,
+            'registration' => $registration,
+            'registrations' => $registrations,
         ]);
     }
 
@@ -184,9 +229,22 @@ class TournamentApiController extends AbstractController
         TournamentRepository $tournamentRepository,
         UserRepository $userRepository,
         PlayerRepository $playerRepository,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        JWTTokenManagerInterface $jwtManager,
     ): JsonResponse {
         $tournament = $tournamentRepository->find($id);
+        $token = $request->cookies->get('BEARER');
+
+        if (!$token) {
+            return $this->json(['error' => 'Token manquant.'], 401);
+        }
+
+        $decoded = $jwtManager->parse($token);
+        $userFromToken = $userRepository->findOneBy(['email' => $decoded['username']]);
+
+        if (!$userFromToken) {
+            return $this->json(['error' => 'Utilisateur introuvable'], 404);
+        }
 
         if (!$tournament) {
             return $this->json(['error' => 'Tournoi introuvable.'], 404);
@@ -194,19 +252,11 @@ class TournamentApiController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
 
-        if (
-            !isset($data['user_id']) ||
-            !isset($data['pseudo']) ||
-            !isset($data['age'])
-        ) {
-            return $this->json(['error' => 'Pseudo, âge et user_id sont requis.'], 400);
+        if (!isset($data['pseudo']) || !isset($data['age'])) {
+            return $this->json(['error' => 'Pseudo et âge sont requis.'], 400);
         }
 
-        $user = $userRepository->find($data['user_id']);
-
-        if (!$user) {
-            return $this->json(['error' => 'Utilisateur introuvable.'], 404);
-        }
+        $user = $userFromToken;
 
         $existingPlayer = $playerRepository->findOneBy(['user' => $user]);
 
@@ -221,18 +271,14 @@ class TournamentApiController extends AbstractController
             $em->persist($player);
         }
 
-        // Vérifier si le joueur est déjà inscrit à ce tournoi
         $existingRegistration = $em->getRepository(Registration::class)->findOneBy([
             'player' => $player,
             'tournament' => $tournament
         ]);
 
         if ($existingRegistration) {
-            return $this->json([
-                'error' => 'Ce joueur est déjà inscrit à ce tournoi.'
-            ], 409);
+            return $this->json(['error' => 'Ce joueur est déjà inscrit à ce tournoi.'], 409);
         }
-
 
         $registration = new Registration();
         $registration->setPlayer($player);
@@ -247,6 +293,7 @@ class TournamentApiController extends AbstractController
             'registration_id' => $registration->getId()
         ], 201);
     }
+
     #[Route('/api/tournaments/{id}/registrations', name: 'api_get_registrations', methods: ['GET'])]
     public function getRegistrations(
         int $id,
@@ -326,10 +373,19 @@ class TournamentApiController extends AbstractController
             return $this->json(['error' => 'L\'inscription ne correspond pas à ce tournoi.'], 400);
         }
 
+        $player = $registration->getPlayer();
+
         try {
+
+            if($player){
+                $em->remove($player);
+            }
+
             // Supprimer l'inscription
             $em->remove($registration);
             $em->flush();
+
+
 
             // Réponse JSON en cas de succès
             return $this->json(['message' => 'Inscription annulée avec succès.'], 200);
@@ -337,6 +393,34 @@ class TournamentApiController extends AbstractController
             // Gestion des erreurs
             return $this->json(['error' => 'Une erreur est survenue lors de la suppression de l\'inscription.'], 500);
         }
+    }
+
+    #[Route('/api/registrations/{id}/accept', name: 'api_accept_registration', methods: ['POST'])]
+    public function acceptRegistration(int $id, EntityManagerInterface $em): JsonResponse {
+        $registration = $em->getRepository(Registration::class)->findOneBy(['player' => $id]);
+
+        if (!$registration) {
+            return $this->json(['error' => 'Inscription introuvable.'], 404);
+        }
+
+        $registration->setStatut('accepté');
+        $em->flush();
+
+        return $this->json(['message' => 'Inscription acceptée avec succès.']);
+    }
+
+    #[Route('/api/registrations/{id}/reject', name: 'api_reject_registration', methods: ['POST'])]
+    public function rejectRegistration(int $id, EntityManagerInterface $em): JsonResponse {
+        $registration = $em->getRepository(Registration::class)->find($id);
+
+        if (!$registration) {
+            return $this->json(['error' => 'Inscription introuvable.'], 404);
+        }
+
+        $em->remove($registration);
+        $em->flush();
+
+        return $this->json(['message' => 'Inscription rejetée avec succès.']);
     }
 
 

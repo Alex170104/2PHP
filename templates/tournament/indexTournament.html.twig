@@ -21,35 +21,57 @@
                 </ul>
             </div>
 
-            <div class="tournament-actions">
-                <button id="openModal" class="btn btn-primary btn-noForm">✏️ Modifier</button>
-                <form id="deleteTournamentForm" method="POST" action="{{ path('api_delete_tournament', { id: tournament.id }) }}">
-                    <button type="submit" class="btn btn-danger">🗑 Supprimer</button>
-                </form>
-            </div>
+            {% if isAdminOrOwner %}
+                <div class="tournament-actions">
+                    <button id="btnOpenModalModification" class="btn btn-primary btn-noForm">✏️ Modifier</button>
+                    <form id="deleteTournamentForm" method="POST" action="{{ path('api_delete_tournament', { id: tournament.id }) }}">
+                        <button type="submit" class="btn btn-danger">🗑 Supprimer</button>
+                    </form>
+                </div>
+            {% endif %}
 
             <div class="section">
                 <h2>👥 Participants</h2>
-                {% if players is not empty %}
+                {% if registrations is not empty %}
                     <div class="players-list">
-                        {% for player in players %}
-                            <div class="player-card">
-                                <div class="player-name">{{ player.nom }}</div>
-                                <div class="player-email">{{ player.email }}</div>
-                            </div>
+                        {% for registrationPlayer in registrations %}
+                            {% if registrationPlayer.statut == 'accepté' %}
+                                <div class="player-card" style="border: 3px solid #00ff00;">
+                                    <div class="player-name">{{ registrationPlayer.player.pseudo }}</div>
+                                </div>
+                            {% elseif registrationPlayer.statut == 'en attente' %}
+                                <div class="player-card">
+                                    <div class="player-name">{{ registrationPlayer.player.pseudo }}</div>
+                                </div>
+                            {% endif %}
                         {% endfor %}
                     </div>
                 {% else %}
                     <p class="no-players">Aucun joueur inscrit pour le moment.</p>
+                {% endif %}
+                <div class="tournament-actions">
+                    {% if isPlayerInTournament %}
+                        <button class="btn btn-primary btn-noForm">Déjà inscrit</button>
+                        {% if registration %}
+                        <form id="apiDeleteRegistration" method="POST" action="{{ path('api_delete_registration', { idTournament: tournament.id, idRegistration: registration.id }) }}">
+                            <button type="submit" class="btn btn-danger">🗑 Se Désinscrire</button>
+                        </form>
+                        {% endif %}
+                    {% else %}
+                        <button id="btnOpenModalInscription" class="btn btn-primary btn-noForm">📝 S'inscrire</button>
+                    {% endif %}
+                </div>
+                {% if isAdminOrOwner %}
+                    <button id="btnOpenModalConfirmation" class="btn btn-primary btn-noForm">✔️ CheckPlayer</button>
                 {% endif %}
             </div>
         </div>
     </div>
 
     {# ========== Modal ========== #}
-    <div id="modal" class="modal">
+    <div id="modalModification" class="modal">
         <div class="modal-content">
-            <span id="closeModal" class="close">&times;</span>
+            <span class="close" data-modal="modalModification">&times;</span>
             <h2>Modifier le tournoi</h2>
             <form id="updateTournamentForm" method="POST" action="{{ path('api_update_tournament', { id: tournament.id }) }}">
                 <label for="name">Nom :</label>
@@ -75,65 +97,224 @@
         </div>
     </div>
 
+    <div id="modalInscription" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="modalInscription">&times;</span>
+            <h2>Inscription au tournoi</h2>
+            <form id="registerForm" method="POST" action="{{ path('api_register_player', { id: tournament.id }) }}">
+                <label for="pseudo">Pseudo :</label>
+                <input type="text" id="pseudo" name="pseudo" required>
+
+                <label for="age">Âge :</label>
+                <input type="number" id="age" name="age" required>
+
+                <button type="submit" class="btn btn-primary">✅ S'inscrire</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalConfirmation" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="modalConfirmation">&times;</span>
+            <h2>Liste des inscriptions</h2>
+            <table>
+                <thead>
+                <tr>
+                    <th>Pseudo</th>
+                    <th>Âge</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% if registrations is not empty %}
+                    {% for registrationPlayer in registrations %}
+                        {% if registrationPlayer.statut == 'en attente' %}
+                            <tr>
+                                <td>{{ registrationPlayer.player.pseudo }}</td>
+                                <td>{{ registrationPlayer.player.age }}</td>
+                                <td>{{ registrationPlayer.player.id }}</td>
+
+                                <td>
+                                    <button class="accept-btn" data-id="{{ registrationPlayer.player.id }}" data-action="accept">✅</button>
+                                    <button class="reject-btn" data-id="{{ registrationPlayer.player.id }}" data-action="reject">❌</button>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="3">Aucune inscription pour l'instant.</td>
+                    </tr>
+                {% endif %}
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
 
     {# ========== Script JS pour le modal et les appels API ========== #}
     <script>
-        const modal = document.getElementById('modal');
+        document.addEventListener("DOMContentLoaded", function () {
+            const modals = {
+                modification: document.getElementById('modalModification'),
+                inscription: document.getElementById('modalInscription'),
+                confirmation: document.getElementById('modalConfirmation')
+            };
 
-        // Ouvre le modal
-        document.getElementById('openModal').addEventListener('click', () => {
-            modal.style.display = 'block';
-        });
-
-        // Ferme le modal
-        document.getElementById('closeModal').addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-
-        // Ferme si on clique en dehors du contenu
-        window.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-
-        // Update AJAX
-            document.getElementById('updateTournamentForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const formData = new FormData(form);
-                const jsonData = Object.fromEntries(formData.entries());
-
-                const response = await fetch(form.action, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(jsonData),
+            const btnInscription = document.getElementById('btnOpenModalInscription');
+            if (btnInscription) {
+                btnInscription.addEventListener('click', () => {
+                    modals.inscription.style.display = 'block';
                 });
+            }
 
-                if (response.ok) {
-                    alert('Tournoi mis à jour avec succès.');
-                    location.reload();
-                } else {
-                    alert('Erreur lors de la mise à jour.');
+            const btnModification = document.getElementById('btnOpenModalModification');
+            if (btnModification) {
+                btnModification.addEventListener('click', () => {
+                    modals.modification.style.display = 'block';
+                });
+            }
+
+            const btnConfirmation = document.getElementById('btnOpenModalConfirmation');
+            if (btnConfirmation) {
+                btnConfirmation.addEventListener('click', () => {
+                    modals.confirmation.style.display = 'block';
+                });
+            }
+
+            // Fermer les modals
+            document.querySelectorAll('.close').forEach(closeBtn => {
+                closeBtn.addEventListener('click', () => {
+                    const target = closeBtn.dataset.modal;
+                    document.getElementById(target).style.display = 'none';
+                });
+            });
+
+            // Ferme si clic hors contenu
+            window.addEventListener('click', (e) => {
+                for (let key in modals) {
+                    if (e.target === modals[key]) {
+                        modals[key].style.display = 'none';
+                    }
                 }
             });
 
-        // Delete AJAX
-        document.getElementById('deleteTournamentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (confirm('Êtes-vous sûr de vouloir supprimer ce tournoi ?')) {
-                const response = await fetch(e.target.action, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                });
+            // Update AJAX
+            const updateForm = document.getElementById('updateTournamentForm');
+            if (updateForm) {
+                updateForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(updateForm);
+                    const jsonData = Object.fromEntries(formData.entries());
 
-                if (response.ok) {
-                    alert('Tournoi supprimé avec succès.');
-                    window.location.href = '/';
-                } else {
-                    alert('Erreur lors de la suppression du tournoi.');
-                }
+                    const response = await fetch(updateForm.action, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(jsonData),
+                    });
+
+                    if (response.ok) {
+                        alert('Tournoi mis à jour avec succès.');
+                        location.reload();
+                    } else {
+                        alert('Erreur lors de la mise à jour.');
+                    }
+                });
             }
+
+            // Delete AJAX
+            const deleteForm = document.getElementById('deleteTournamentForm');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (confirm('Êtes-vous sûr de vouloir supprimer ce tournoi ?')) {
+                        const response = await fetch(deleteForm.action, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                        });
+
+                        if (response.ok) {
+                            alert('Tournoi supprimé avec succès.');
+                            window.location.href = '/';
+                        } else {
+                            alert('Erreur lors de la suppression du tournoi.');
+                        }
+                    }
+                });
+            }
+
+            // Register AJAX
+            const registerForm = document.getElementById('registerForm');
+            if (registerForm) {
+                registerForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(registerForm);
+                    const jsonData = Object.fromEntries(formData.entries());
+
+                    const response = await fetch(registerForm.action, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(jsonData)
+                    });
+
+                    if (response.ok) {
+                        alert('Inscription réussie !');
+                        location.reload();
+                    } else {
+                        const error = await response.json();
+                        alert(error.error || 'Erreur lors de l\'inscription.');
+                    }
+                });
+            }
+
+            const deleteRegistration = document.getElementById('apiDeleteRegistration');
+            if (deleteRegistration) {
+                deleteRegistration.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (confirm('Êtes-vous sûr de vouloir vous desinscrire ?')) {
+                        const response = await fetch(deleteRegistration.action, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                        });
+
+                        if (response.ok) {
+                            alert('Desinscription confirmée.');
+                            location.reload();
+                        } else {
+                            alert('Erreur lors de la desinscription.');
+                        }
+                    }
+                });
+            }
+
+            document.querySelectorAll(".accept-btn, .reject-btn").forEach(button => {
+                button.addEventListener("click", async (e) => {
+                    const playerId = button.dataset.id;
+                    const action = button.dataset.action; // "accept" ou "reject"
+                    const url = `/api/registrations/${playerId}/${action}`; // Remplacez par votre route backend
+
+                    if (confirm(`Êtes-vous sûr de vouloir ${action === "accept" ? "accepter" : "rejeter"} ce joueur ?`)) {
+                        try {
+                            const response = await fetch(url, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                            });
+
+                            if (response.ok) {
+                                alert(`Joueur ${action === "accept" ? "accepté" : "rejeté"} avec succès.`);
+                                location.reload();
+                            } else {
+                                const error = await response.json();
+                                alert(error.error || "Une erreur est survenue.");
+                            }
+                        } catch (err) {
+                            alert("Erreur lors de la communication avec le serveur.");
+                        }
+                    }
+                });
+            });
         });
     </script>
+
 {% endblock %}

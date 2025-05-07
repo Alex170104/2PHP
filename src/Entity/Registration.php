@@ -16,7 +16,8 @@ class Registration
     #[ORM\Column(length: 50)]
     private ?string $statut = null;
 
-    #[ORM\ManyToOne(inversedBy: 'registrations')]
+    #[ORM\OneToOne(inversedBy: 'registration', cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Player $player = null;
 
     #[ORM\ManyToOne(inversedBy: 'registrations')]

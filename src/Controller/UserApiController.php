@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Repository\TournamentRepository;
 use App\Repository\UserRepository;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -46,7 +47,8 @@ class UserApiController extends AbstractController
         int $id,
         Request $request,
         JWTTokenManagerInterface $jwtManager,
-        UserRepository $userRepository
+        UserRepository $userRepository,
+        TournamentRepository $tournamentRepository
     ): Response {
         $token = $request->cookies->get('BEARER');
 
@@ -63,7 +65,6 @@ class UserApiController extends AbstractController
                 return $this->render('error.html.twig', ['message' => 'Utilisateur introuvable']);
             }
 
-            // Si l'utilisateur authentifié n'est pas admin et essaie de voir un autre utilisateur
             if (
                 $userFromToken->getId() !== $targetUser->getId() &&
                 !in_array('ROLE_ADMIN', $userFromToken->getRoles())
@@ -71,8 +72,11 @@ class UserApiController extends AbstractController
                 return $this->render('error.html.twig', ['message' => 'Accès refusé']);
             }
 
+            $tournaments = $tournamentRepository->findAll();
+
             return $this->render('user_api/indexUser.html.twig', [
-                'user' => $targetUser
+                'user' => $targetUser,
+                'tournaments' => $tournaments,
             ]);
         } catch (\Exception $e) {
             return $this->render('error.html.twig', ['message' => 'Token invalide']);

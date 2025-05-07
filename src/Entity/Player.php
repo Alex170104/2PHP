@@ -41,7 +41,7 @@ class Player
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $sport = null;
 
-    #[ORM\OneToOne(inversedBy: 'player', cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(inversedBy: 'player', cascade: ['persist'])]
     private ?User $user = null;
 
     /**
@@ -115,32 +115,22 @@ class Player
         return $this;
     }
 
-    /**
-     * @return Collection<int, Registration>
-     */
-    public function getRegistrations(): Collection
+    #[ORM\OneToOne(mappedBy: 'player', targetEntity: Registration::class, cascade: ['persist', 'remove'])]
+    private ?Registration $registration = null;
+
+    public function getRegistration(): ?Registration
     {
-        return $this->registrations;
+        return $this->registration;
     }
 
-    public function addRegistration(Registration $registration): static
+    public function setRegistration(?Registration $registration): static
     {
-        if (!$this->registrations->contains($registration)) {
-            $this->registrations->add($registration);
+        // Assure la synchronisation des deux côtés
+        if ($registration && $registration->getPlayer() !== $this) {
             $registration->setPlayer($this);
         }
 
-        return $this;
-    }
-
-    public function removeRegistration(Registration $registration): static
-    {
-        if ($this->registrations->removeElement($registration)) {
-            // set the owning side to null (unless already changed)
-            if ($registration->getPlayer() === $this) {
-                $registration->setPlayer(null);
-            }
-        }
+        $this->registration = $registration;
 
         return $this;
     }

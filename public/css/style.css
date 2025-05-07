@@ -26,6 +26,10 @@ ul {
     list-style: none;
 }
 
+a {
+    text-decoration: none;
+}
+
 /* ========== NAVBAR ========= */
 .nav-list {
     list-style: none;
@@ -128,6 +132,7 @@ button:hover {
 
 /* ========== FORM / CARD ========= */
 .form-container, .tournament-container, .admin-container {
+    flex: 1 1 70%;
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -181,6 +186,99 @@ form button{
 }
 
 /* ========== TOURNAMENT ========= */
+
+.profile-and-tournaments {
+    display: flex;
+    gap: 40px;
+    padding: 40px;
+    background: radial-gradient(circle at center, #2c2c2c 0%, #111 100%);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.container-user{
+    flex: 1 1 70%;
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    max-height: 90%;
+    max-width: 600px;
+    color: #f1b500;
+    background-color: #2c2c2c;
+}
+
+.container-user-right{
+    flex: 1 1 25%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    max-height: 90%;
+    color: #f1b500;
+    background-color: #2c2c2c;
+}
+
+/* Carte du formulaire */
+.form-container-user {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 90%;
+    background-color: #2c2c2c;
+    height: 65rem;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+/* Carte des tournois */
+.tournament-panel {
+    flex: 2 1 25%;
+    background-color: #2c2c2c;
+    padding: 2rem;
+    max-height: 90%;
+    border-radius: 16px;
+    color: #f1b500;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+/* Ajustement pour que les deux cartes soient sur une seule ligne sur écran large */
+@media (max-width: 1024px) {
+    .profile-and-tournaments {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .form-container,
+    .tournament-panel {
+        flex: 1 1 100%;
+        max-width: 800px;
+    }
+}
+
+.tournament-panel {
+    flex: 1 1 25%;
+    background-color: #2c2c2c;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+}
+
+.user-list-wrapper{
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 48rem;
+    margin-bottom: 2rem;
+    overflow-y: auto;
+    padding-right: 1rem;
+}
 
 .tournament-wrapper, .admin-wrapper {
     width: 80%;
@@ -236,6 +334,14 @@ form button{
     color: #f9d423;
 }
 
+.verified{
+    background-color: #2ecc71;
+}
+
+.pending{
+    background-color: #f39c12;
+}
+
 .players-list {
     display: flex;
     flex-direction: column;
@@ -285,7 +391,7 @@ form button{
     justify-content: center;
     align-items: flex-start;
 }
-.admin-list-wrapper ul, .admin-list-wrapper a{
+.admin-list-wrapper ul, .admin-list-wrapper a, .user-list-wrapper a, .user-list-wrapper ul{
     text-decoration: none;
 }
 
