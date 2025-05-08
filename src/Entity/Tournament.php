@@ -40,13 +40,10 @@ class Tournament
     /**
      * @var Collection<int, Registration>
      */
-    #[ORM\OneToMany(targetEntity: Registration::class, mappedBy: 'tournament')]
+    #[ORM\OneToMany(mappedBy: 'tournament', targetEntity: Registration::class, cascade: ['remove'], orphanRemoval: true)]
     private Collection $registrations;
 
-    /**
-     * @var Collection<int, Rencontre>
-     */
-    #[ORM\OneToMany(targetEntity: Rencontre::class, mappedBy: 'tournament')]
+    #[ORM\OneToMany(mappedBy: 'tournament', targetEntity: Rencontre::class, cascade: ['remove'], orphanRemoval: true)]
     private Collection $rencontres;
 
     public function __construct()

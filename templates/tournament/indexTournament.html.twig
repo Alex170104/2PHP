@@ -30,6 +30,10 @@
                 </div>
             {% endif %}
 
+            <div class="tournament-actions">
+                <button class="btn btn-primary btn-noForm" onclick="window.location.href='/tournament/{{ tournament.id }}/bracket'">🏆 BRACKET</button>
+            </div>
+
             <div class="section">
                 <h2>👥 Participants</h2>
                 {% if registrations is not empty %}

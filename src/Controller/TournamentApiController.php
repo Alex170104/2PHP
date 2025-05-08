@@ -5,8 +5,8 @@ namespace App\Controller;
 use App\Entity\Player;
 use App\Entity\Registration;
 use App\Entity\Tournament;
-use App\Entity\User;
 use App\Repository\PlayerRepository;
+use App\Repository\RegistrationRepository;
 use App\Repository\TournamentRepository;
 use App\Repository\UserRepository;
 use App\Entity\Rencontre;
@@ -18,10 +18,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Serializer\SerializerInterface;
 use App\Repository\RencontreRepository;
-use Symfony\Bundle\SecurityBundle\Security;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use App\Service\MailService;
 
 class TournamentApiController extends AbstractController
 {
@@ -144,17 +144,15 @@ class TournamentApiController extends AbstractController
     public function deleteTournament(Tournament $tournament, EntityManagerInterface $entityManager): JsonResponse
     {
         try {
-            // Suppression du tournoi
+            // Supprimer le tournoi (les entités liées seront supprimées automatiquement)
             $entityManager->remove($tournament);
             $entityManager->flush();
 
-            // Réponse JSON en cas de succès
             return new JsonResponse(
-                ['message' => 'Tournoi supprimé avec succès.'],
+                ['message' => 'Tournoi et ses données associées supprimés avec succès.'],
                 Response::HTTP_OK
             );
         } catch (\Exception $e) {
-            // Gestion des erreurs
             return new JsonResponse(
                 ['error' => 'Une erreur est survenue lors de la suppression du tournoi.'],
                 Response::HTTP_INTERNAL_SERVER_ERROR
@@ -430,6 +428,14 @@ class TournamentApiController extends AbstractController
     }
 
 
+    #[Route('/tournament/{id}/bracket', name: 'tournament_bracket', methods: ['GET'])]
+    public function showBracket(Tournament $tournament): Response
+    {
+        return $this->render('tournament/bracket.html.twig', [
+            'tournament' => $tournament,
+        ]);
+    }
+
     #[Route('/api/tournaments/{id}/sport-matchs', name: 'api_tournament_sport_matchs', methods: ['GET'])]
     public function getRencontresByTournament(
         int $id,
@@ -482,49 +488,65 @@ class TournamentApiController extends AbstractController
 
 
     #[Route('/api/tournaments/{id}/sport-matchs', name: 'api_create_sport_match', methods: ['POST'])]
-    public function createSportMatchForTournament(
+    public function createMatchesForTournament(
         int $id,
-        Request $request,
-        TournamentRepository $tournamentRepository,
-        PlayerRepository $player1Repository,
-        PlayerRepository $player2Repository,
         EntityManagerInterface $entityManager,
-        SerializerInterface $serializer
+        TournamentRepository $tournamentRepository,
+        RencontreRepository $rencontreRepository,
+        RegistrationRepository $registrationRepository
     ): JsonResponse {
+        // Récupérer le tournoi
         $tournament = $tournamentRepository->find($id);
-
         if (!$tournament) {
-            return new JsonResponse(['error' => 'Tournoi non trouvé'], 404);
+            return new JsonResponse(['error' => 'Tournoi introuvable.'], 404);
         }
 
-        $data = json_decode($request->getContent(), true);
-
-        if (!isset($data['player1_id'], $data['player2_id'])) {
-            return new JsonResponse(['error' => 'Données manquantes (player1_id, player2_id)'], 400);
+        // Vérifier si des rencontres existent déjà
+        $existingMatches = $rencontreRepository->findBy(['tournament' => $tournament]);
+        if (!empty($existingMatches)) {
+            return new JsonResponse(['message' => 'Les rencontres existent déjà.'], 200);
         }
 
-        $player1 = $player1Repository->find($data['player1_id']);
-        $player2 = $player2Repository->find($data['player2_id']);
+        // Récupérer les joueurs avec le statut "accepté"
+        $registrations = $registrationRepository->findBy([
+            'tournament' => $tournament,
+            'statut' => 'accepté'
+        ]);
 
-        if (!$player1 || !$player2) {
-            return new JsonResponse(['error' => 'Un ou plusieurs joueurs sont introuvables'], 404);
+        $players = array_map(fn($registration) => $registration->getPlayer(), $registrations);
+
+        // Vérifier qu'il y a un nombre pair de joueurs
+        if (count($players) < 2) {
+            return new JsonResponse(['error' => 'Pas assez de joueurs pour générer des rencontres.'], 400);
         }
 
-        $match = new Rencontre();
-        $match->setEquipe1($player1);
-        $match->setEquipe2($player2);
-        $match->setTournament($tournament);
-        $match->setScore1(0); // Initialiser le score à 0
-        $match->setScore2(0); // Initialiser le score à 0
-        $entityManager->persist($match);
+        // Mélanger les joueurs pour des paires aléatoires
+        shuffle($players);
+
+        // Générer des paires de joueurs
+        $pairs = array_chunk($players, 2);
+
+        // Créer des objets Rencontre pour chaque paire
+        foreach ($pairs as $pair) {
+            if (count($pair) === 2) {
+                $match = new Rencontre();
+                $match->setEquipe1($pair[0]);
+                $match->setEquipe2($pair[1]);
+                $match->setTournament($tournament);
+                $match->setScore1(0);
+                $match->setScore2(0);
+
+                $entityManager->persist($match);
+            }
+        }
+
+        // Enregistrer les rencontres dans la base de données
         $entityManager->flush();
 
-        $json = $serializer->serialize($match, 'json', ['groups' => 'sport_match_read']);
-
-        return new JsonResponse($json, 201, [], true);
+        return new JsonResponse(['message' => 'Rencontres générées avec succès.'], 201);
     }
 
-    #[Route('/api/tournaments/{idTournament}/sport-matchs/{idRencontre}', name: 'api_tournament_sport_matchs', methods: ['GET'])]
+    #[Route('/api/tournaments/{idTournament}/sport-matchs/{idRencontre}', name: 'api_tournament_sport_matchs_details', methods: ['GET'])]
     public function getRencontreByTournament(
         int $idTournament,
         int $idRencontre,
@@ -580,8 +602,7 @@ class TournamentApiController extends AbstractController
         TournamentRepository $tournamentRepository,
         RencontreRepository $rencontreRepository,
         EntityManagerInterface $em,
-        JWTTokenManagerInterface $jwtManager,
-        UserRepository $userRepository
+        MailService $mailService,
     ): JsonResponse {
         $tournament = $tournamentRepository->find($idTournament);
         if (!$tournament) {
@@ -593,59 +614,76 @@ class TournamentApiController extends AbstractController
             return $this->json(['error' => 'Match introuvable pour ce tournoi.'], 404);
         }
 
-        $token = $request->cookies->get('BEARER');
-        if (!$token) {
-            return $this->json(['error' => 'Utilisateur non authentifié.'], 401);
-        }
-
-        $payload = $jwtManager->parse($token);
-        if (!isset($payload['username'])) {
-            return $this->json(['error' => 'Token invalide.'], 401);
-        }
-
-        $user = $userRepository->findOneBy(['email' => $payload['username']]);
-        if (!$user) {
-            return $this->json(['error' => 'Utilisateur non trouvé.'], 401);
-        }
-
-        $isAdminOrOwner = in_array('ROLE_ADMIN', $user->getRoles()) || $user === $tournament->getOrganisateur();
-
-        $isPlayerInMatch = false;
-        if ($match->getEquipe1() && $match->getEquipe1()->getUser() === $user) {
-            $isPlayerInMatch = true;
-        } elseif ($match->getEquipe2() && $match->getEquipe2()->getUser() === $user) {
-            $isPlayerInMatch = true;
-        }
-
-        if (!$isAdminOrOwner && !$isPlayerInMatch) {
-            return $this->json(['error' => 'Accès refusé. Seul un joueur du match ou un admin peut modifier le score.'], 403);
-        }
-
         $data = json_decode($request->getContent(), true);
-        if (!$data) {
-            return $this->json(['error' => 'Le corps de la requête est vide ou invalide.'], 400);
+        if (!isset($data['score1']) || !isset($data['score2'])) {
+            return $this->json(['error' => 'Les scores sont requis.'], 400);
         }
 
-        if ($isAdminOrOwner) {
-            if (isset($data['score1'])) {
-                $match->setScore1($data['score1']);
-            }
-            if (isset($data['score2'])) {
-                $match->setScore2($data['score2']);
-            }
-        } else {
-            if (!isset($data['score'])) {
-                return $this->json(['error' => 'Le score est requis.'], 400);
-            }
+        $match->setScore1($data['score1']);
+        $match->setScore2($data['score2']);
 
-            if ($match->getEquipe1() && $match->getEquipe1()->getUser() === $user) {
-                $match->setScore1($data['score']);
-            } elseif ($match->getEquipe2() && $match->getEquipe2()->getUser() === $user) {
-                $match->setScore2($data['score']);
-            }
+        // Déterminer le gagnant
+        if ($data['score1'] > $data['score2']) {
+            $match->setWinner($match->getEquipe1());
+        } elseif ($data['score2'] > $data['score1']) {
+            $match->setWinner($match->getEquipe2());
+        } else {
+            return $this->json(['error' => 'Les scores ne peuvent pas être égaux.'], 400);
         }
 
         $em->flush();
+
+        $joueur1 = $match->getEquipe1();
+        $joueur2 = $match->getEquipe2();
+
+        $user1 = $joueur1->getUser();
+        $user2 = $joueur2->getUser();
+
+        // Envoyer un email aux joueurs
+        $email1 = $user1->getEmail();
+        $email2 = $user2->getEmail();
+
+
+
+        // Vérifier si tous les matchs du tour actuel sont terminés
+        $currentMatches = $rencontreRepository->findBy(['tournament' => $tournament]);
+        $allFinished = true;
+        foreach ($currentMatches as $currentMatch) {
+            if (!$currentMatch->getWinner()) {
+                $allFinished = false;
+                break;
+            }
+        }
+
+        // Générer les matchs du tour suivant si tous les matchs sont terminés
+        if ($allFinished) {
+            $winners = array_map(fn($m) => $m->getWinner(), $currentMatches);
+            shuffle($winners);
+            $pairs = array_chunk($winners, 2);
+
+            foreach ($pairs as $pair) {
+                if (count($pair) === 2) {
+                    $nextMatch = new Rencontre();
+                    $nextMatch->setEquipe1($pair[0]);
+                    $nextMatch->setEquipe2($pair[1]);
+                    $nextMatch->setTournament($tournament);
+                    $nextMatch->setScore1(0);
+                    $nextMatch->setScore2(0);
+
+                    $em->persist($nextMatch);
+                }
+            }
+            $em->flush();
+        }
+
+        $mailService->send(
+            [$email1, $email2],
+            'Résultat du match',
+            'Votre match a été terminé. Voici les résultats : ' . "\n" .
+            'Joueur 1 : ' . $joueur1->getPseudo() . ' - Score : ' . $data['score1'] . "\n" .
+            'Joueur 2 : ' . $joueur2->getPseudo() . ' - Score : ' . $data['score2'] . "\n" .
+            'Gagnant : ' . ($match->getWinner() ? $match->getWinner()->getPseudo() : 'Aucun gagnant') . "\n"
+        );
 
         return $this->json(['message' => 'Score mis à jour avec succès.']);
     }
@@ -702,8 +740,6 @@ class TournamentApiController extends AbstractController
 
         return $this->json(['message' => 'Match supprimé avec succès.'], 200);
     }
-
-
 
 
 

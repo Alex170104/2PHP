@@ -6,6 +6,7 @@ use App\Repository\RencontreRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: RencontreRepository::class)]
+#[ORM\UniqueConstraint(name: 'unique_winner_per_match', columns: ['winner_id'])]
 class Rencontre
 {
     #[ORM\Id]
@@ -28,6 +29,7 @@ class Rencontre
     private ?int $score2 = null;
 
     #[ORM\ManyToOne(inversedBy: 'rencontres')]
+    #[ORM\JoinColumn(nullable: true, unique: true)]
     private ?Player $winner = null;
 
     #[ORM\ManyToOne(inversedBy: 'rencontres')]

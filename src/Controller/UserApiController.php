@@ -242,11 +242,6 @@ class UserApiController extends AbstractController
             return new Response('Token invalide', 403);
         }
     }
-
-
-
-
-
 }
 
 

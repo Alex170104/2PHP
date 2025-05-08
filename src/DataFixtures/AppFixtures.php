@@ -7,6 +7,8 @@ use App\Entity\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use App\Entity\Player;
+use App\Entity\Registration;
 
 class AppFixtures extends Fixture
 {
@@ -36,6 +38,7 @@ class AppFixtures extends Fixture
             ['email' => 'tanguy@tournament.fr', 'nom' => 'Tanguy'],
             ['email' => 'alex@tournament.fr', 'nom' => 'Alex'],
             ['email' => 'tom@tournament.fr', 'nom' => 'Tom'],
+            ['email' => 'noah@tournament.fr', 'nom' => 'Noah'],
         ];
 
         foreach ($users as $userData) {

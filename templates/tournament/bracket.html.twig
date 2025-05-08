@@ -1,0 +1,190 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Arbre du Tournoi{% endblock %}
+
+{% block body %}
+    <div class="tournament-wrapper">
+        <h1>Arbre du tournoi</h1>
+        <p class="subtitle">Visualisez et mettez à jour les résultats des matchs</p>
+
+        <div id="bracket-container" class="bracket-container">
+            <!-- Les rounds et matchs seront insérés ici dynamiquement -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const tournamentId = {{ tournament.id }};
+            const generateUrl = `/api/tournaments/${tournamentId}/sport-matchs`;
+            const fetchUrl = `/api/tournaments/${tournamentId}/sport-matchs`;
+
+            try {
+                // Appel à l'API POST pour générer les matchs
+                const generateResponse = await fetch(generateUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!generateResponse.ok) {
+                    console.error('Erreur lors de la génération des matchs :', await generateResponse.json());
+                    return;
+                }
+
+                // Appel à l'API GET pour récupérer les matchs
+                const fetchResponse = await fetch(fetchUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (fetchResponse.ok) {
+                    const data = await fetchResponse.json();
+
+                    if (data.rencontres.length === 0) {
+                        document.getElementById('bracket-container').innerHTML = '<p>Aucun match disponible.</p>';
+                        return;
+                    }
+
+                    const bracketContainer = document.getElementById('bracket-container');
+                    bracketContainer.innerHTML = '';
+
+                    const rounds = {};
+                    data.rencontres.forEach(match => {
+                        const round = match.round || 1; // Ajoutez un champ "round" si nécessaire
+                        if (!rounds[round]) {
+                            rounds[round] = [];
+                        }
+                        rounds[round].push(match);
+                    });
+
+                    // Afficher les rounds et les matchs
+                    Object.keys(rounds).sort((a, b) => a - b).forEach(round => {
+                        const roundDiv = document.createElement('div');
+                        roundDiv.classList.add('bracket-round');
+                        roundDiv.innerHTML = `<h2>Round ${round}</h2>`;
+
+                        rounds[round].forEach(match => {
+                            const matchCard = document.createElement('div');
+                            matchCard.classList.add('match-card');
+
+                            // Vérifier si le joueur 1 est le même que le joueur 2
+                            if (match.joueur1 && match.joueur2 && match.joueur1.id === match.joueur2.id) {
+                                alert(`Le gagnant est ${match.joueur1.pseudo} !`);
+                            }
+
+                            matchCard.innerHTML = `
+                        <div class="match-player">
+                            <span>${match.joueur1 ? match.joueur1.pseudo : 'Joueur inconnu'}</span>
+                            <input type="number" min="0" class="score-input" name="score1_${match.id}" value="${match.scoreJoueur1}">
+                        </div>
+                        <div class="vs">VS</div>
+                        <div class="match-player">
+                            <span>${match.joueur2 ? match.joueur2.pseudo : 'Joueur inconnu'}</span>
+                            <input type="number" min="0" class="score-input" name="score2_${match.id}" value="${match.scoreJoueur2}">
+                        </div>
+                        <button class="btn btn-primary" onclick="submitScore(${match.id})">Valider</button>
+                    `;
+                            roundDiv.appendChild(matchCard);
+                        });
+
+                        bracketContainer.appendChild(roundDiv);
+                    });
+                } else {
+                    console.error('Erreur lors de la récupération des matchs :', await fetchResponse.json());
+                }
+            } catch (error) {
+                console.error('Erreur réseau :', error);
+            }
+        });
+
+
+
+        function submitScore(matchId) {
+            const score1 = document.querySelector(`input[name='score1_${matchId}']`).value;
+            const score2 = document.querySelector(`input[name='score2_${matchId}']`).value;
+
+            fetch(`/api/tournaments/{{ tournament.id }}/sport-matchs/${matchId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ score1: parseInt(score1), score2: parseInt(score2) })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    alert('Scores mis à jour avec succès !');
+                    location.reload();
+                })
+                .catch(err => {
+                    console.error('Erreur lors de la mise à jour :', err);
+                    alert("Une erreur est survenue");
+                });
+        }
+    </script>
+
+    <style>
+        .bracket-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+            animation: fadeIn 1s ease-in;
+        }
+
+        .bracket-round {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            background-color: #2c2c2c;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            color: #f1b500;
+            min-width: 280px;
+        }
+
+        .match-card {
+            background: linear-gradient(135deg, #ff4e50, #f9d423);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            color: #2c3e50;
+            width: 100%;
+        }
+
+        .match-player {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .score-input {
+            width: 3rem;
+            font-size: 1rem;
+            padding: 0.3rem;
+            border-radius: 8px;
+            border: none;
+            text-align: center;
+        }
+
+        .vs {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #e63946;
+            margin: 0.5rem 0;
+        }
+    </style>
+{% endblock %}
