@@ -8,7 +8,7 @@
 
 - [PHP 8.4.0](https://www.php.net/)
 - [Symfony](https://symfony.com/)
-- [Doctrine ORM]
+- Doctrine ORM
 - [WAMP](https://www.wampserver.com/) (ou tout autre serveur local compatible PHP/MySQL)
 
 ## 🚀 Installation
